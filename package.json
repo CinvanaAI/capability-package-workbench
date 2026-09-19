@@ -1,0 +1,40 @@
+{
+  "name": "capability-package-workbench",
+  "version": "0.1.0",
+  "description": "Evidence-backed capability package drafts, validation, publication, rollback, surfaces, policy, artifacts, and governed action execution.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node tests/lifecycle.mjs && node tests/consumer-api.mjs && node tests/storage-atomicity.mjs",
+    "demo": "npm run build && node examples/first-package.mjs",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.15",
+    "typescript": "5.9.3"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "examples",
+    "LICENSE.md",
+    "README.md",
+    "SECURITY.md",
+    "docs",
+    "ORIGIN.md"
+  ],
+  "license": "MIT"
+}

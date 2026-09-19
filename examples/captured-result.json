@@ -1,0 +1,12 @@
+{
+  "kind": "captured synthetic execution projection",
+  "command": "npm run demo",
+  "input_example": "examples/first-package.mjs",
+  "observed_output": {
+    "unpublishedAuthorized": false,
+    "releaseVersion": 1,
+    "output": "hello packages",
+    "draftEditChangedPublishedOutput": false
+  },
+  "projection_note": "Selected fields from a successful local run. Machine paths, temporary identifiers and execution timestamps are omitted. Re-run the linked example for fresh evidence."
+}
