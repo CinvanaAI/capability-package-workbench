@@ -1,31 +1,77 @@
 # Capability Package Workbench
 
-A local library for creating capability packages and executing published snapshots. Drafting, validation, publication, rollback and action evidence remain distinct records.
+Keep an editable capability draft separate from the exact release an action executes. Validate, publish locally, inspect old releases and roll back by making a new publication.
 
-## Try it
+This library comes from the TypeScript Skeleton rebuild and has its own empty-workspace consumer API. No desktop application or model provider is needed. [Origin](ORIGIN.md)
 
-Node.js 20 or newer and Python 3.10 or newer on `PATH`. No model credentials.
+## Follow three releases
+
+Node.js 20+ and Python 3.10+ on PATH, from this checkout:
 
 ```sh
 npm ci
 npm run demo
+npm run check
+npm test
 ```
 
-[examples/first-package.mjs](examples/first-package.mjs) creates a title normalizer from scratch. Execution is refused before publication. After publishing version one, the example changes the draft and runs the published package: the result remains `hello packages`, not the draft’s replacement text. Its printed evidence directory contains the lifecycle and execution records.
+[The example](examples/first-package.mjs) defines a tiny Python title normalizer and executes it through the actual subprocess boundary. [The captured result](examples/captured-result.json) shows:
 
-## How it works
+| Moment | Observed behavior |
+| --- | --- |
+| Unpublished draft | Execution authorization denied |
+| Publish v1 | Whitespace-heavy input returns `hello packages` |
+| Edit the draft | v1 still returns `hello packages` |
+| Publish that draft as v2 | Same input returns `DRAFT ONLY` |
+| Roll back to v1 | New v3 returns `hello packages`, including after reopening the workspace |
 
-A reviewed, immutable package snapshot is a clearer execution target than a moving draft. Read the [mechanism and implementation notes](docs/MECHANISM.md) for the specific boundaries and source links.
+All three releases remain inspectable; the example compares the retained v1 record with its original. “Publish” means create a release in this local workspace, not upload to GitHub or npm. Local evidence is left in the printed temporary directory; the public capture omits that machine path.
 
-## Scope
+## Use the library in your own Node project
 
-Python actions run trusted source in a subprocess. Package validation checks structure and entrypoint expectations, not arbitrary program safety or correctness. Workspace policy flags are not an authentication service. For a separate consumer, build, `npm pack`, install the local archive, then import `openPackageWorkbench` from `capability-package-workbench`.
+```sh
+npm run build
+npm pack --pack-destination ..
+mkdir ../package-consumer
+cd ../package-consumer
+npm init -y
+npm install ../capability-package-workbench-0.1.0.tgz
+```
 
-## Verify
+Save as `example.mjs` and run `node example.mjs`:
 
-`npm run check` and `npm test` exercise the original behavior, a consumer-created example and concurrent JSON readers.
+```js
+import { openPackageWorkbench } from "capability-package-workbench";
+const { platform } = await openPackageWorkbench("./workspace");
+await platform.createPackage({ packageId: "example.greeting", draft: {
+  name: "Greeting", description: "A synthetic trusted function", entrypoint: "greet",
+  sourceLanguage: "python", sourceText: "def greet():\n    return 'hello'",
+  metadata: {}, packageKind: "function"
+} });
+await platform.validatePackage("example.greeting");
+const published = await platform.publishPackage("example.greeting");
+console.log(published.publishedRelease.version); // 1
+```
 
-MIT licensed; see [LICENSE.md](LICENSE.md). Origin and release boundaries are documented in [ORIGIN.md](ORIGIN.md) and [SECURITY.md](SECURITY.md).
-## Inspect the example result
+Use a new workspace or package ID when creating again. Follow the full demo to authorize and execute a release. Installation above uses a local archive; this repository does not claim an npm registry release.
 
-Open the [saved synthetic result](examples/captured-result.json) alongside its [input and demonstration](examples/first-package.mjs). The result is from the bundled synthetic example; local machine paths and temporary run identifiers are excluded from public projections.
+## Source and extension boundary
+
+[openPackageWorkbench](src/consumer.ts) creates storage, coordination, environment and executor services. [CapabilityPlatformService](src/owners/capability-platform/src/service.ts) manages the lifecycle:
+
+- `saveDraft` changes editable source and clears its validation.
+- `validatePackage` checks the draft's structure and entrypoint expectations.
+- `publishPackage` stores source/forms and release evidence.
+- `executeGovernedPackageAction` selects the published release and records authorization/execution.
+- `rollbackPackage` republishes a prior snapshot as a new version; history remains.
+- `getPackage` exposes current draft, published release, all releases, policies and action records.
+
+A host can build its own editing surface around these calls. The prior release is the execution boundary even while new source is being edited.
+
+## Limits
+
+The Python subprocess runs **trusted source** with ordinary process authority. Validation does not prove program safety or correctness; policy flags are not authentication. Use a single writer. JSON replacement is atomic per file, while a publication spans multiple records.
+
+The next useful work is a crash-recovery contract across those records, plus a separately enforced sandbox before accepting untrusted packages. Neither is implied by a successful example.
+
+[Mechanism](docs/MECHANISM.md) · [Lifecycle checks](tests/lifecycle.mjs) · [Security](SECURITY.md) · [License](LICENSE.md)
